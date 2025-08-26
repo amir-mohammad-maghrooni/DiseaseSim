@@ -50,6 +50,7 @@ public class Location {
     private Disease disease;
     // Population density (0.0-1.0, where 1.0 is max density)
     private double populationDensity;
+    private Set<Location> connections = new HashSet<>();
 
     /**
      * Constructs a Location with the given name, population size, and density.
@@ -118,7 +119,7 @@ public class Location {
      * Calculates the combined effect of all active policies on transmission rate.
      * @return Policy modifier (multiplier for transmission rate)
      */
-    private double calculatePolicyModifier() {
+    public double calculatePolicyModifier() {
         double modifier = 1.0;
         for (Policy policy : activePolicies) {
             modifier *= policy.getTransmissionModifier();
@@ -135,9 +136,12 @@ public class Location {
         this.disease = disease;
 
         Collections.shuffle(population);
-        for (int i = 0; i < Math.min(initialInfected, population.size()); i++) {
-            if (population.get(i).canBeInfected()){
-                population.get(i).setState(new Infected());
+        int infectedCount = 0;
+        for (Person p : population) {
+            if (infectedCount >= initialInfected) break;
+            if (p.canBeInfected()) {
+                p.setState(new Infected());
+                infectedCount++;
             }
         }
     }
@@ -160,6 +164,58 @@ public class Location {
         }
 
         return stats;
+    }
+    
+    /**
+     * Checks if this location is connected to another location.
+     * @param other The other Location
+     * @return true if connected, false otherwise
+     */
+    /**
+     * Connects this location to another location (modular, for GUI).
+     */
+    public void connectTo(Location other) {
+        connections.add(other);
+    }
+
+    /**
+     * Disconnects this location from another location.
+     */
+    public void disconnectFrom(Location other) {
+        connections.remove(other);
+    }
+
+    /**
+     * Checks if this location is connected to another location.
+     */
+    public boolean isConnectedTo(Location other) {
+        return connections.contains(other);
+    }
+    /**
+     * Adds a list of people to this location's population.
+     * @param newPeople List of Person objects to add
+     */
+    /**
+     * Adds a list of people to this location's population.
+     */
+    public void addPeople(List<Person> peopleToAdd){
+        this.population.addAll(peopleToAdd);
+    }
+    /**
+     * Removes a list of people from this location's population.
+     * @param peopleToRemove List of Person objects to remove
+     */
+    /**
+     * Removes a list of people from this location's population.
+     */
+    public void removePeople(List<Person> peopleToRemove){
+        this.population.removeAll(peopleToRemove);
+    }
+    /**
+     * Returns the list of people currently in this location.
+     */
+    public List<Person> getPeople() {
+        return population;
     }
 
     /**

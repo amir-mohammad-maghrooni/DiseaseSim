@@ -1,11 +1,12 @@
-C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\module-info.java
 C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\model\Location.java
 C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\policies\Policy.java
 C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\states\HealthState.java
 C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\policies\LockdownPolicy.java
 C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\states\Deceased.java
+C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\utility\ChartPanel.java
 C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\utility\PercentUtils.java
 C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\policies\CustomPolicy.java
+C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\Interactions\TravelInteraction.java
 C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\policies\SocialDistancingPolicy.java
 C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\states\Recovered.java
 C:\Users\Amir Maghrouni\Desktop\DiseaseSim\src\main\java\DiseaseSim\policies\MaskPolicy.java

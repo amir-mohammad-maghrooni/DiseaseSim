@@ -28,6 +28,11 @@
             <version>${javafx.version}</version>
             <classifier>win</classifier>
         </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20230227</version>
+        </dependency>
         
         <!-- For testing -->
         <dependency>
@@ -35,6 +40,11 @@
             <artifactId>junit-jupiter-api</artifactId>
             <version>5.10.0</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+          <groupId>org.openjfx</groupId>
+          <artifactId>javafx-swing</artifactId>
+          <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -102,6 +112,25 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                 <groupId>org.panteleyev</groupId>
+                 <artifactId>jpackage-maven-plugin</artifactId>
+                 <version>1.6.0</version>
+                 <executions>
+                   <execution>
+                     <goals>
+                       <goal>jpackage</goal>
+                     </goals>
+                   </execution>
+                 </executions>
+                 <configuration>
+                   <inputDirectory>${project.build.directory}</inputDirectory>
+                   <mainJar>DiseaseSim-1.0-SNAPSHOT-jar-with-dependencies.jar</mainJar>
+                   <mainClass>DiseaseSim.Class</mainClass>
+                   <name>DiseaseSim</name>
+                   <type>app-image</type> <!-- Use 'exe' for Windows, 'app-image' for bash script -->
+                 </configuration>
             </plugin>
         </plugins>
     </build>

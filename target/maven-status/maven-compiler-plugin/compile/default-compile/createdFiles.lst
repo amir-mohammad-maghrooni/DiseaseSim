@@ -6,9 +6,9 @@ DiseaseSim\utility\PercentUtils.class
 DiseaseSim\states\Healthy.class
 DiseaseSim\states\Infected.class
 DiseaseSim\policies\CustomPolicy.class
+DiseaseSim\utility\ChartPanel.class
 DiseaseSim\policies\LockdownPolicy.class
 DiseaseSim\states\Recovered.class
-module-info.class
 DiseaseSim\model\Person.class
 DiseaseSim\policies\MaskPolicy.class
 DiseaseSim\ConsoleSimulationTest.class

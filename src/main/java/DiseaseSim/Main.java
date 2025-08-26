@@ -16,8 +16,17 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.io.*;
+import java.nio.file.*;
+import java.util.stream.Collectors;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 
 /**
@@ -159,10 +168,157 @@ public class Main extends Application {
         Button resetBtn = new Button("Reset Simulation");
         resetBtn.setOnAction(_ -> resetSimulation());
         
-        buttonBox.getChildren().addAll(run1DayBtn, run5DaysBtn, runCustomBtn, resetBtn);
-        
+        Button showChart = new Button("Show Chart");
+        showChart.setOnAction(_ -> showChartDialog());
+        buttonBox.getChildren().addAll(run1DayBtn, run5DaysBtn, runCustomBtn, resetBtn, showChart);
         controls.getChildren().addAll(daysBox, buttonBox);
         return controls;
+    }
+    /**
+     * Prompts user for chart interval and save location, then exports a line chart as JPG.
+     */
+    private void showChartDialog() {
+        // Show chart preview window with save button
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        ComboBox<Integer> intervalCombo = new ComboBox<>();
+        intervalCombo.getItems().addAll(1, 5, 10, 20, 50);
+        intervalCombo.getSelectionModel().selectFirst();
+
+        ComboBox<String> variableCombo = new ComboBox<>();
+        variableCombo.getItems().addAll("Infected", "Healthy", "Recovered", "Deceased");
+        variableCombo.getSelectionModel().selectFirst();
+
+        ComboBox<String> locationCombo = new ComboBox<>();
+        for (Location loc : world.getLocations()) {
+            locationCombo.getItems().add(loc.getName());
+        }
+        if (!locationCombo.getItems().isEmpty()) {
+            locationCombo.getSelectionModel().selectFirst();
+        }
+
+        grid.add(new Label("Interval (days):"), 0, 0);
+        grid.add(intervalCombo, 1, 0);
+        grid.add(new Label("Variable:"), 0, 1);
+        grid.add(variableCombo, 1, 1);
+        grid.add(new Label("Location:"), 0, 2);
+        grid.add(locationCombo, 1, 2);
+
+        javafx.stage.Stage previewStage = new javafx.stage.Stage();
+        previewStage.setTitle("Chart Preview");
+        javafx.scene.layout.VBox vbox = new javafx.scene.layout.VBox(10);
+        vbox.setPadding(new javafx.geometry.Insets(10));
+        vbox.getChildren().add(grid);
+        javafx.scene.control.Button showChartButton = new javafx.scene.control.Button("Show Chart");
+        vbox.getChildren().add(showChartButton);
+        previewStage.setScene(new javafx.scene.Scene(vbox, 400, 300));
+        previewStage.show();
+
+        showChartButton.setOnAction(e -> {
+            int interval = intervalCombo.getValue();
+            String variable = variableCombo.getValue();
+            String location = locationCombo.getValue();
+            showChartPreviewWindow(variable, location, interval);
+        });
+    }
+
+    /**
+     * Generates and saves the chart as a JPG file.
+     */
+    private void exportChartAsJPG(String variable, String location, int interval, String filePath) {
+        // Prepare stats history for the selected location and variable
+        List<Map<String, Integer>> statsList = getStatsHistory(location);
+        if (statsList == null || statsList.isEmpty()) return;
+        List<Map<String, Integer>> filteredStats = new ArrayList<>();
+        for (int i = 0; i < statsList.size(); i += interval) {
+            filteredStats.add(statsList.get(i));
+        }
+        List<String> variables = new ArrayList<>();
+        variables.add(variable);
+        List<String> locations = new ArrayList<>();
+        locations.add(location);
+        Map<String, List<Map<String, Integer>>> statsHistory = new HashMap<>();
+        statsHistory.put(location, filteredStats);
+        DiseaseSim.utility.ChartPanel chartPanel = new DiseaseSim.utility.ChartPanel(variables, locations, statsHistory);
+        chartPanel.setPrefSize(800, 600);
+        javafx.stage.Stage chartStage = new javafx.stage.Stage();
+        chartStage.setTitle("Chart");
+        javafx.scene.layout.VBox vbox = new javafx.scene.layout.VBox(10);
+        vbox.setPadding(new javafx.geometry.Insets(10));
+        vbox.getChildren().add(chartPanel);
+        javafx.scene.control.Button saveButton = new javafx.scene.control.Button("Save Chart as PNG");
+        vbox.getChildren().add(saveButton);
+        chartStage.setScene(new javafx.scene.Scene(vbox, 820, 650));
+        chartStage.show();
+
+        saveButton.setOnAction(event -> {
+            javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+            fileChooser.setTitle("Save Chart");
+            fileChooser.getExtensionFilters().add(
+                new javafx.stage.FileChooser.ExtensionFilter("PNG Files", "*.png")
+            );
+            java.io.File file = fileChooser.showSaveDialog(chartStage);
+            if (file != null) {
+                String fname = file.getName().toLowerCase();
+                if (!fname.endsWith(".png")) {
+                    file = new java.io.File(file.getAbsolutePath() + ".png");
+                }
+                javafx.scene.SnapshotParameters params = new javafx.scene.SnapshotParameters();
+                // Save only the chart node, not the ChartPanel container
+                javafx.scene.image.WritableImage image = chartPanel.getChartNode().snapshot(params, null);
+                if (image == null) {
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to capture chart image.");
+                    alert.showAndWait();
+                    return;
+                }
+                try {
+                    boolean result = javax.imageio.ImageIO.write(javafx.embed.swing.SwingFXUtils.fromFXImage(image, null), "png", file);
+                    StringBuilder debugInfo = new StringBuilder();
+                    debugInfo.append("Attempted to save file: ").append(file.getAbsolutePath()).append("\n");
+                    debugInfo.append("File exists after write: ").append(file.exists()).append("\n");
+                    debugInfo.append("File length: ").append(file.length()).append("\n");
+                    if (result && file.exists() && file.length() > 0) {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Chart saved successfully to:\n" + file.getAbsolutePath());
+                        alert.showAndWait();
+                    } else {
+                        Alert alert = new Alert(Alert.AlertType.ERROR, "Failed to save chart file.\n" + debugInfo.toString());
+                        alert.showAndWait();
+                    }
+                } catch (Exception e) {
+                    StringWriter sw = new StringWriter();
+                    e.printStackTrace(new PrintWriter(sw));
+                    Alert alert = new Alert(Alert.AlertType.ERROR, "Error saving chart: " + e.getMessage() + "\n" + sw.toString());
+                    alert.showAndWait();
+                }
+            }
+        });
+    }
+
+    // Helper to show chart preview window from dialog
+    private void showChartPreviewWindow(String variable, String location, int interval) {
+        List<Map<String, Integer>> statsList = getStatsHistory(location);
+        if (statsList == null || statsList.isEmpty()) return;
+        List<Map<String, Integer>> filteredStats = new ArrayList<>();
+        for (int i = 0; i < statsList.size(); i += interval) {
+            filteredStats.add(statsList.get(i));
+        }
+        List<String> variables = new ArrayList<>();
+        variables.add(variable);
+        List<String> locations = new ArrayList<>();
+        locations.add(location);
+        Map<String, List<Map<String, Integer>>> statsHistory = new HashMap<>();
+        statsHistory.put(location, filteredStats);
+        exportChartAsJPG(variable, location, interval, null); // null path, triggers preview only
+    }
+
+    /**
+     * Returns the stats history for a location (implement as needed).
+     */
+    private List<Map<String, Integer>> getStatsHistory(String locationName) {
+    return world.getStatsHistory(locationName);
     }
 
     /**
@@ -193,11 +349,115 @@ public class Main extends Application {
         locationControls.getChildren().clear();
         Button addLocationBtn = new Button("Add Location");
         addLocationBtn.setOnAction(_ -> showAddLocationDialog());
+        Button saveLocationsBtn = new Button("Save Locations");
+        saveLocationsBtn.setOnAction(_ -> showSaveLocationsDialog());
+        Button loadLocationsBtn = new Button("Load Locations");
+        loadLocationsBtn.setOnAction(_ -> showLoadLocationsDialog());
         Button setInitialInfectedBtn = new Button("Set Initial Infected");
         setInitialInfectedBtn.setOnAction(_ -> showSetInitialInfectedDialog());
-        locationControls.getChildren().addAll(addLocationBtn, setInitialInfectedBtn);
+        locationControls.getChildren().addAll(addLocationBtn, saveLocationsBtn, loadLocationsBtn, setInitialInfectedBtn);
         for (Location loc : world.getLocations()) {
             addLocationToUI(loc);
+            updateOutput();
+        }
+    }
+
+    // Show file chooser to save locations
+        private void showSaveLocationsDialog() {
+            javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+            fileChooser.setTitle("Save Locations");
+            fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("JSON Files", "*.json"));
+            java.io.File file = fileChooser.showSaveDialog(null);
+            if (file != null) {
+                saveLocationsConfig(file.getAbsolutePath());
+                saveLastLocationsPath(file.getAbsolutePath());
+            }
+        }
+
+    // Show file chooser to load locations
+    private void showLoadLocationsDialog() {
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("Load Locations");
+        fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("JSON Files", "*.json"));
+        java.io.File file = fileChooser.showOpenDialog(null);
+        if (file != null) {
+            loadLocationsConfig(file.getAbsolutePath());
+            saveLastLocationsPath(file.getAbsolutePath());
+        }
+    }
+
+    // Save locations to a user-specified file
+    private void saveLocationsConfig(String filePath) {
+        try {
+            JSONArray locationsArr = new JSONArray();
+            for (Location loc : world.getLocations()) {
+                JSONObject locObj = new JSONObject();
+                locObj.put("name", loc.getName());
+                locObj.put("population", loc.getPopulationSize());
+                locObj.put("density", loc.getPopulationDensity());
+                locationsArr.put(locObj);
+            }
+            JSONObject root = new JSONObject();
+            root.put("locations", locationsArr);
+            java.nio.file.Files.write(java.nio.file.Paths.get(filePath), root.toString(2).getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Load locations from a user-specified file
+    private void loadLocationsConfig(String filePath) {
+        try {
+            java.nio.file.Path configPath = java.nio.file.Paths.get(filePath);
+            if (!java.nio.file.Files.exists(configPath)) return;
+            String jsonStr = new String(java.nio.file.Files.readAllBytes(configPath));
+            JSONObject root = new JSONObject(jsonStr);
+            JSONArray locationsArr = root.getJSONArray("locations");
+            world.getLocations().clear();
+            for (int i = 0; i < locationsArr.length(); i++) {
+                JSONObject locObj = locationsArr.getJSONObject(i);
+                String name = locObj.getString("name");
+                int pop = locObj.getInt("population");
+                double dens = locObj.getDouble("density");
+                Location loc = new Location(name, pop, dens);
+                world.addNewLocation(loc);
+            }
+            rebuildLocationControls();
+            updateOutput();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Save last-used locations file path in appconfig.json
+    private void saveLastLocationsPath(String filePath) {
+        try {
+            JSONObject config = new JSONObject();
+            config.put("lastLocationsPath", filePath);
+            java.nio.file.Path configPath = getJarDirectory().resolve("appconfig.json");
+            java.nio.file.Files.write(configPath, config.toString(2).getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Load last-used locations file path from appconfig.json
+    private String loadLastLocationsPath() {
+        try {
+            java.nio.file.Path configPath = getJarDirectory().resolve("appconfig.json");
+            if (!java.nio.file.Files.exists(configPath)) return null;
+            String jsonStr = new String(java.nio.file.Files.readAllBytes(configPath));
+            JSONObject config = new JSONObject(jsonStr);
+            return config.optString("lastLocationsPath", null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    // Call this on startup to auto-load last locations file
+    private void autoLoadLastLocations() {
+        String lastPath = loadLastLocationsPath();
+        if (lastPath != null) {
+            loadLocationsConfig(lastPath);
         }
     }
     // Dialog to set initial infected for a location
@@ -258,9 +518,10 @@ public class Main extends Application {
                         break;
                     }
                 }
-                updateOutput();
+                
             }
         });
+        updateOutput();
     }
 
     /**
@@ -365,34 +626,41 @@ public class Main extends Application {
      */
     private void showAddLocationDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Add New Location");
-        dialog.setHeaderText("Enter location details");
-        
+        dialog.setTitle("Add Location");
+    dialog.setHeaderText("Enter location details");
+
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setPadding(new Insets(20, 150, 10, 10));
-        
+
         TextField nameField = new TextField();
-        nameField.setPromptText("Location name");
-        
         Spinner<Integer> populationSpinner = new Spinner<>(100, 1000000, 100000, 1000);
-        
         Spinner<Double> densitySpinner = PercentUtils.createPercentSpinner(0.5);
-        
+
+    // ...existing code...
+
         grid.add(new Label("Name:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(new Label("Population:"), 0, 1);
         grid.add(populationSpinner, 1, 1);
         grid.add(new Label("Density:"), 0, 2);
         grid.add(densitySpinner, 1, 2);
-        
+    // ...existing code...
+
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        
+
         dialog.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                addLocation(nameField.getText(), populationSpinner.getValue(), densitySpinner.getValue());
+                String name = nameField.getText();
+                int pop = populationSpinner.getValue();
+                double dens = densitySpinner.getValue();
+                Location newLoc = new Location(name, pop, dens);
+                world.addNewLocation(newLoc);
+                // ...existing code...
+                saveLocationsConfig();
+                rebuildLocationControls();
             }
         });
     }
@@ -880,20 +1148,30 @@ public class Main extends Application {
     private void updateOutput() {
         StringBuilder output = new StringBuilder();
         output.append("=== Simulation Day ").append(world.getCurrentDay()).append(" ===\n");
-        
+
         // Global stats
         Map<String, Integer> globalStats = world.getGlobalStatistics();
         output.append("Global Statistics:\n");
         output.append(String.format("  Healthy: %d, Infected: %d, Recovered: %d, Deceased:  %d\n",
             globalStats.get("Healthy"), globalStats.get("Infected"), globalStats.get("Recovered"), globalStats.get("Deceased")));
-        
+
         // Location stats
         output.append("\nLocation Statistics:\n");
         for (Location location : world.getLocations()) {
             Map<String, Integer> stats = location.getStatistics();
             output.append(String.format("  %s: Healthy: %d, Infected: %d, Recovered: %d, Deceased: %d\n",
                 location.getName(), stats.get("Healthy"), stats.get("Infected"), stats.get("Recovered"), stats.get("Deceased")));
-            
+
+            // Show connections
+            Set<Location> connections = world.getConnections(location);
+            if (!connections.isEmpty()) {
+                output.append("    Connections: ");
+                for (Location conn : connections) {
+                    output.append(conn.getName()).append(" ");
+                }
+                output.append("\n");
+            }
+
             // Active policies
             if (!location.getActivePolicies().isEmpty()) {
                 output.append("    Active Policies: ");
@@ -903,13 +1181,13 @@ public class Main extends Application {
                 output.append("\n");
             }
         }
-        
+
         outputArea.setText(output.toString());
     }
     /**
      * Adds a location to the UI controls (used after reset or add).
      * @param location The location to add
-     */
+    */
     private void addLocationToUI(Location location) {
         HBox locationBox = new HBox(10);
         locationBox.setAlignment(Pos.CENTER_LEFT);
@@ -919,6 +1197,7 @@ public class Main extends Application {
         Button removeBtn = new Button("Remove");
         removeBtn.setOnAction(_ -> {
             world.getLocations().remove(location);
+            saveLocationsConfig();
             rebuildLocationControls();
             updateOutput();
         });
@@ -926,8 +1205,151 @@ public class Main extends Application {
         Button policiesBtn = new Button("Manage Policies");
         policiesBtn.setOnAction(_ -> showLocationPoliciesDialog(location));
 
-        locationBox.getChildren().addAll(locationLabel, removeBtn, policiesBtn);
+        Button editBtn = new Button("Edit");
+        editBtn.setOnAction(_ -> showEditLocationDialog(location));
+
+        locationBox.getChildren().addAll(locationLabel, removeBtn, policiesBtn, editBtn);
         locationControls.getChildren().add(locationBox);
+    }
+    private void showEditLocationDialog(Location location) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Edit Location");
+        dialog.setHeaderText("Edit location details and connections");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        TextField nameField = new TextField(location.getName());
+        Spinner<Integer> populationSpinner = new Spinner<>(1, 1000000, location.getPopulationSize());
+        Spinner<Double> densitySpinner = PercentUtils.createPercentSpinner(location.getPopulationDensity());
+
+        // Connections selection
+        List<Location> allLocations = world.getLocations();
+        List<CheckBox> connectionChecks = new ArrayList<>();
+        VBox connectionsBox = new VBox(5);
+        for (Location loc : allLocations) {
+            if (loc == location) continue;
+            HBox connRow = new HBox(10);
+            CheckBox cb = new CheckBox(loc.getName());
+            cb.setSelected(location.isConnectedTo(loc));
+            connRow.getChildren().add(cb);
+            connectionChecks.add(cb);
+            connectionsBox.getChildren().add(connRow);
+        }
+
+        grid.add(new Label("Name:"), 0, 0);
+        grid.add(nameField, 1, 0);
+        grid.add(new Label("Population:"), 0, 1);
+        grid.add(populationSpinner, 1, 1);
+        grid.add(new Label("Density:"), 0, 2);
+        grid.add(densitySpinner, 1, 2);
+        grid.add(new Label("Connections:"), 0, 3);
+        grid.add(connectionsBox, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                // Update connections
+                for (int i = 0, j = 0; i < allLocations.size(); i++) {
+                    Location loc = allLocations.get(i);
+                    if (loc == location) continue;
+                    if (connectionChecks.get(j).isSelected()) {
+                        world.connectLocations(location, loc);
+                    } else {
+                        world.disconnectLocations(location, loc);
+                    }
+                    j++;
+                }
+                saveLocationsConfig();
+                rebuildLocationControls();
+                updateOutput();
+            }
+        });
+    }
+    // Save locations and connections to config file in same folder as JAR
+    private void saveLocationsConfig() {
+        try {
+            JSONArray locationsArr = new JSONArray();
+            for (Location loc : world.getLocations()) {
+                JSONObject locObj = new JSONObject();
+                locObj.put("name", loc.getName());
+                locObj.put("population", loc.getPopulationSize());
+                locObj.put("density", loc.getPopulationDensity());
+                JSONArray connectionsArr = new JSONArray();
+                for (Location conn : world.getConnections(loc)) {
+                    connectionsArr.put(conn.getName());
+                }
+                locObj.put("connections", connectionsArr);
+                locationsArr.put(locObj);
+            }
+            JSONObject root = new JSONObject();
+            root.put("locations", locationsArr);
+            Path jarDir = getJarDirectory();
+            Files.write(jarDir.resolve("locations.json"), root.toString(2).getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Load locations and connections from config file in same folder as JAR
+    private void loadLocationsConfig() {
+        try {
+            Path jarDir = getJarDirectory();
+            Path configPath = jarDir.resolve("locations.json");
+            if (!Files.exists(configPath)) return;
+            String jsonStr = new String(Files.readAllBytes(configPath));
+            JSONObject root = new JSONObject(jsonStr);
+            JSONArray locationsArr = root.getJSONArray("locations");
+            Map<String, Location> nameToLoc = new HashMap<>();
+            world.getLocations().clear();
+            // First pass: create locations
+            for (int i = 0; i < locationsArr.length(); i++) {
+                JSONObject locObj = locationsArr.getJSONObject(i);
+                String name = locObj.getString("name");
+                int pop = locObj.getInt("population");
+                double dens = locObj.getDouble("density");
+                Location loc = new Location(name, pop, dens);
+                world.addNewLocation(loc);
+                nameToLoc.put(name, loc);
+            }
+            // Second pass: set connections
+            for (int i = 0; i < locationsArr.length(); i++) {
+                JSONObject locObj = locationsArr.getJSONObject(i);
+                String name = locObj.getString("name");
+                Location loc = nameToLoc.get(name);
+                JSONArray connectionsArr = locObj.getJSONArray("connections");
+                for (int j = 0; j < connectionsArr.length(); j++) {
+                    String connName = connectionsArr.getString(j);
+                    Location connLoc = nameToLoc.get(connName);
+                    if (connLoc != null) {
+                        world.connectLocations(loc, connLoc);
+                    }
+                }
+            }
+            rebuildLocationControls();
+            updateOutput();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Helper to get the directory of the running JAR or class
+    private Path getJarDirectory() {
+        try {
+            String path = Main.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+            File jarFile = new File(path);
+            if (jarFile.isFile()) {
+                return jarFile.getParentFile().toPath();
+            } else {
+                return jarFile.toPath();
+            }
+        } catch (Exception e) {
+            return Paths.get("");
+        }
     }
 
     /**
