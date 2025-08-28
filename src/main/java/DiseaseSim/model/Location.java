@@ -1,6 +1,5 @@
 
 
-// DiseaseSim.model package contains all model classes for the simulation
 package DiseaseSim.model;
 
 import DiseaseSim.policies.Policy;
@@ -50,7 +49,6 @@ public class Location {
     private Disease disease;
     // Population density (0.0-1.0, where 1.0 is max density)
     private double populationDensity;
-    private Set<Location> connections = new HashSet<>();
 
     /**
      * Constructs a Location with the given name, population size, and density.
@@ -167,36 +165,8 @@ public class Location {
     }
     
     /**
-     * Checks if this location is connected to another location.
-     * @param other The other Location
-     * @return true if connected, false otherwise
-     */
-    /**
-     * Connects this location to another location (modular, for GUI).
-     */
-    public void connectTo(Location other) {
-        connections.add(other);
-    }
-
-    /**
-     * Disconnects this location from another location.
-     */
-    public void disconnectFrom(Location other) {
-        connections.remove(other);
-    }
-
-    /**
-     * Checks if this location is connected to another location.
-     */
-    public boolean isConnectedTo(Location other) {
-        return connections.contains(other);
-    }
-    /**
      * Adds a list of people to this location's population.
      * @param newPeople List of Person objects to add
-     */
-    /**
-     * Adds a list of people to this location's population.
      */
     public void addPeople(List<Person> peopleToAdd){
         this.population.addAll(peopleToAdd);
@@ -204,9 +174,6 @@ public class Location {
     /**
      * Removes a list of people from this location's population.
      * @param peopleToRemove List of Person objects to remove
-     */
-    /**
-     * Removes a list of people from this location's population.
      */
     public void removePeople(List<Person> peopleToRemove){
         this.population.removeAll(peopleToRemove);

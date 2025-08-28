@@ -1,5 +1,3 @@
-
-// DiseaseSim.states package contains all health state classes for the simulation
 package DiseaseSim.states;
 
 

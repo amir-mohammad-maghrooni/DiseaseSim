@@ -1,9 +1,6 @@
-
-// DiseaseSim.model package contains all model classes for the simulation
 package DiseaseSim.model;
 
 import java.util.*;
-// ...existing code...
 
 /**
  * Represents the entire simulation world, containing multiple locations and a disease.
@@ -13,45 +10,6 @@ public class World {
     // Map: location name -> list of daily statistics
     private Map<String, List<Map<String, Integer>>> statsHistory = new HashMap<>();
     // Map to store travel rates for each location pair
-// ...existing code...
-    /**
-     * Connects two locations in the world (bidirectional).
-     */
-    public void connectLocations(Location a, Location b) {
-        if (a != null && b != null && !a.equals(b)) {
-            a.connectTo(b);
-            b.connectTo(a);
-        }
-    }
-
-    /**
-     * Disconnects two locations in the world (bidirectional).
-     */
-    public void disconnectLocations(Location a, Location b) {
-        if (a != null && b != null && !a.equals(b)) {
-            a.disconnectFrom(b);
-            b.disconnectFrom(a);
-        }
-    }
-
-    /**
-     * Gets all locations connected to the given location.
-     */
-    public Set<Location> getConnections(Location location) {
-        if (location == null) return Collections.emptySet();
-        // Assuming Location has a getConnections() method
-        try {
-            java.lang.reflect.Field field = Location.class.getDeclaredField("connections");
-            field.setAccessible(true);
-            Object value = field.get(location);
-            if (value instanceof Set) {
-                return new HashSet<>((Set<Location>) value);
-            }
-        } catch (Exception e) {
-            // ignore
-        }
-        return Collections.emptySet();
-    }
     // List of all locations in the world
     private List<Location> locations;
     // The disease currently being simulated
@@ -60,7 +18,6 @@ public class World {
     private int currentDay;
     // Whether the simulation is running or paused
     private boolean isRunning;
-// ...existing code...
 
     /**
      * Constructs a new World with no locations and simulation paused.
@@ -71,7 +28,6 @@ public class World {
         this.isRunning = false;
     }
 
-// ...existing code...
 
     /**
      * Initializes the world with default locations and a default disease.

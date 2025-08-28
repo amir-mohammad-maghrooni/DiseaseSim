@@ -1,5 +1,4 @@
 
-// DiseaseSim.model package contains all model classes for the simulation
 package DiseaseSim.model;
 
 

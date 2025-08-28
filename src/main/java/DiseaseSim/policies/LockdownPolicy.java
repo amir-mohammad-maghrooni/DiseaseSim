@@ -1,5 +1,3 @@
-
-// DiseaseSim.policies package contains all policy-related classes for the simulation
 package DiseaseSim.policies;
 
 /**

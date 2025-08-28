@@ -1,7 +1,6 @@
 
 
 
-// DiseaseSim package contains the main simulation entry points and UI
 package DiseaseSim;
 
 
@@ -74,7 +73,6 @@ public class Main extends Application {
 
     /**
      * Main entry point for launching the JavaFX application.
-     * @param args Command-line arguments (unused)
      */
     public static void main(String[] args) {
         launch(args);
@@ -1162,16 +1160,6 @@ public class Main extends Application {
             output.append(String.format("  %s: Healthy: %d, Infected: %d, Recovered: %d, Deceased: %d\n",
                 location.getName(), stats.get("Healthy"), stats.get("Infected"), stats.get("Recovered"), stats.get("Deceased")));
 
-            // Show connections
-            Set<Location> connections = world.getConnections(location);
-            if (!connections.isEmpty()) {
-                output.append("    Connections: ");
-                for (Location conn : connections) {
-                    output.append(conn.getName()).append(" ");
-                }
-                output.append("\n");
-            }
-
             // Active policies
             if (!location.getActivePolicies().isEmpty()) {
                 output.append("    Active Policies: ");
@@ -1214,7 +1202,7 @@ public class Main extends Application {
     private void showEditLocationDialog(Location location) {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Edit Location");
-        dialog.setHeaderText("Edit location details and connections");
+    dialog.setHeaderText("Edit location details");
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
@@ -1225,45 +1213,19 @@ public class Main extends Application {
         Spinner<Integer> populationSpinner = new Spinner<>(1, 1000000, location.getPopulationSize());
         Spinner<Double> densitySpinner = PercentUtils.createPercentSpinner(location.getPopulationDensity());
 
-        // Connections selection
-        List<Location> allLocations = world.getLocations();
-        List<CheckBox> connectionChecks = new ArrayList<>();
-        VBox connectionsBox = new VBox(5);
-        for (Location loc : allLocations) {
-            if (loc == location) continue;
-            HBox connRow = new HBox(10);
-            CheckBox cb = new CheckBox(loc.getName());
-            cb.setSelected(location.isConnectedTo(loc));
-            connRow.getChildren().add(cb);
-            connectionChecks.add(cb);
-            connectionsBox.getChildren().add(connRow);
-        }
-
-        grid.add(new Label("Name:"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("Population:"), 0, 1);
-        grid.add(populationSpinner, 1, 1);
-        grid.add(new Label("Density:"), 0, 2);
-        grid.add(densitySpinner, 1, 2);
-        grid.add(new Label("Connections:"), 0, 3);
-        grid.add(connectionsBox, 1, 3);
+    grid.add(new Label("Name:"), 0, 0);
+    grid.add(nameField, 1, 0);
+    grid.add(new Label("Population:"), 0, 1);
+    grid.add(populationSpinner, 1, 1);
+    grid.add(new Label("Density:"), 0, 2);
+    grid.add(densitySpinner, 1, 2);
 
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
         dialog.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
-                // Update connections
-                for (int i = 0, j = 0; i < allLocations.size(); i++) {
-                    Location loc = allLocations.get(i);
-                    if (loc == location) continue;
-                    if (connectionChecks.get(j).isSelected()) {
-                        world.connectLocations(location, loc);
-                    } else {
-                        world.disconnectLocations(location, loc);
-                    }
-                    j++;
-                }
+                // No connection logic
                 saveLocationsConfig();
                 rebuildLocationControls();
                 updateOutput();
@@ -1279,11 +1241,7 @@ public class Main extends Application {
                 locObj.put("name", loc.getName());
                 locObj.put("population", loc.getPopulationSize());
                 locObj.put("density", loc.getPopulationDensity());
-                JSONArray connectionsArr = new JSONArray();
-                for (Location conn : world.getConnections(loc)) {
-                    connectionsArr.put(conn.getName());
-                }
-                locObj.put("connections", connectionsArr);
+                // No connections saved
                 locationsArr.put(locObj);
             }
             JSONObject root = new JSONObject();
@@ -1316,20 +1274,7 @@ public class Main extends Application {
                 world.addNewLocation(loc);
                 nameToLoc.put(name, loc);
             }
-            // Second pass: set connections
-            for (int i = 0; i < locationsArr.length(); i++) {
-                JSONObject locObj = locationsArr.getJSONObject(i);
-                String name = locObj.getString("name");
-                Location loc = nameToLoc.get(name);
-                JSONArray connectionsArr = locObj.getJSONArray("connections");
-                for (int j = 0; j < connectionsArr.length(); j++) {
-                    String connName = connectionsArr.getString(j);
-                    Location connLoc = nameToLoc.get(connName);
-                    if (connLoc != null) {
-                        world.connectLocations(loc, connLoc);
-                    }
-                }
-            }
+            // No connection logic
             rebuildLocationControls();
             updateOutput();
         } catch (Exception e) {

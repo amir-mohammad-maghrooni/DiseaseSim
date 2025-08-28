@@ -1,5 +1,3 @@
-
-// DiseaseSim.utility package contains utility/helper classes for the simulation
 package DiseaseSim.utility;
 
 
